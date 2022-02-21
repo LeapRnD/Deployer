@@ -1,0 +1,44 @@
+name: ClamD
+on:
+  schedule:
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+jobs:
+  ava:
+    runs-on: ubuntu-latest
+    environment: DeployToCloudFormation
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ca-central-1
+    steps:
+      - name: Checkout
+        run: |
+          eval "$(ssh-agent -s)"
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-add -
+          git clone --depth 1 --filter=blob:none --no-checkout git@github.com:LeapRnD/Ava.git $(pwd)
+          git checkout main -- \
+            CloudFormation/StackSet.clamd.yml \
+            CloudFormation/StackSet.common.yml \
+            clamd.pkr.hcl \
+            install-clamav.sh
+      - name: Setup Packer
+        uses: hashicorp/packer-github-actions@master
+        with:
+          command: init
+          target: clamd.pkr.hcl
+      - name: Package
+        uses: hashicorp/packer-github-actions@master
+        with:
+          command: build
+          target: clamd.pkr.hcl
+      - name: Deploy
+        run: |
+          cp CloudFormation/StackSet.clamd.yml StackSet.yml
+          cat CloudFormation/StackSet.common.yml >> StackSet.yml
+          jq -r '.builds[0].artifact_id | split(",") | map_values(split(":") | "    " + .[0] + ":\n      ImageId: " + .[1]) | join("\n")' packer-manifest.json >> StackSet.yml
+          aws cloudformation update-stack-set \
+            --region ca-central-1 \
+            --stack-set-name ClamD \
+            --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+            --template-body "$(cat StackSet.yml)"

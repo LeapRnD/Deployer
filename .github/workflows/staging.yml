@@ -1,0 +1,51 @@
+name: Staging
+on:
+  schedule:
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+jobs:
+  ava:
+    runs-on: ubuntu-latest
+    environment: DeployToCloudFormation
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Checkout
+        run: |
+          eval "$(ssh-agent -s)"
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-add -
+          git clone --recurse-submodules --depth 1 git@github.com:LeapRnD/Ava.git $(pwd)
+      - name: Setup Java
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'zulu'
+      - name: Compile
+        uses: gradle/gradle-build-action@v2
+        with:
+          gradle-version: current
+          arguments: stage
+      - name: Test
+        run: find build
+      - name: Setup Packer
+        uses: hashicorp/packer-github-actions@master
+        with:
+          command: init
+          target: ava.pkr.hcl
+      - name: Package
+        uses: hashicorp/packer-github-actions@master
+        with:
+          command: build
+          target: ava.pkr.hcl
+      - name: Deploy
+        run: |
+          cp CloudFormation/StackSet.ava.yml StackSet.yml
+          cat CloudFormation/StackSet.common.yml >> StackSet.yml
+          jq -r '.builds[0].artifact_id | split(",") | map_values(split(":") | "    " + .[0] + ":\n      ImageId: " + .[1]) | join("\n")' packer-manifest.json >> StackSet.yml
+          aws cloudformation update-stack-set \
+            --region ca-central-1 \
+            --stack-set-name AvaStaging \
+            --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+            --template-body "$(cat StackSet.yml)" \
+            --operation-preferences '{ "FailureTolerancePercentage": 100, "MaxConcurrentPercentage": 100, "RegionConcurrencyType": "PARALLEL" }'

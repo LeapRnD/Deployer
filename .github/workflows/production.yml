@@ -1,0 +1,21 @@
+name: Production
+on:
+  workflow_dispatch:
+jobs:
+  ava:
+    runs-on: ubuntu-latest
+    environment: DeployToCloudFormation
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ca-central-1
+    steps:
+      - name: Deploy
+        run: |
+          TEMPLATE=$(mktemp)
+          aws cloudformation describe-stack-set --stack-set-name AvaStaging | jq -r .StackSet.TemplateBody > $TEMPLATE
+          exec aws cloudformation update-stack-set \
+            --stack-set-name Ava \
+            --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+            --template-body "file://$TEMPLATE" \
+            --operation-preferences '{ "FailureTolerancePercentage": 100, "MaxConcurrentPercentage": 100, "RegionConcurrencyType": "PARALLEL" }'

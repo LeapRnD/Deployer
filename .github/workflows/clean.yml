@@ -1,0 +1,21 @@
+name: Clean
+on:
+  schedule:
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+jobs:
+  ava:
+    runs-on: ubuntu-latest
+    environment: CleanAMIs
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Clean
+        run: |
+          sudo apt-get install --yes python3-pip
+          sudo pip3 --no-cache-dir install awscli aws-amicleaner
+          for AWS_DEFAULT_REGION in ca-central-1 us-east-1 us-west-1 us-west-2 sa-east-1; do
+            export AWS_DEFAULT_REGION
+            amicleaner --full-report --ami-min-days 60 --force-delete
+          done
