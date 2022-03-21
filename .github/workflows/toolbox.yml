@@ -20,6 +20,7 @@ jobs:
           git checkout main -- \
             CloudFormation/StackSet.common.yml \
             CloudFormation/StackSet.toolbox.yml \
+            finish-packer.sh \
             install-developer-scripts.sh \
             install-developer-tools.sh \
             install-developer-users.sh \

@@ -21,6 +21,7 @@ jobs:
             CloudFormation/StackSet.clamd.yml \
             CloudFormation/StackSet.common.yml \
             clamd.pkr.hcl \
+            finish-packer.sh \
             install-clamav.sh
       - name: Setup Packer
         uses: hashicorp/packer-github-actions@master
