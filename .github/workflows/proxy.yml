@@ -20,6 +20,7 @@ jobs:
           git checkout main -- \
             CloudFormation/StackSet.common.yml \
             CloudFormation/StackSet.proxy.yml \
+            finish-packer.sh \
             install-proxy.sh \
             proxy.pkr.hcl
       - name: Setup Packer
