@@ -17,5 +17,5 @@ jobs:
           sudo pip3 --no-cache-dir install awscli aws-amicleaner
           for AWS_DEFAULT_REGION in ca-central-1 us-east-1 us-west-1 us-west-2 sa-east-1; do
             export AWS_DEFAULT_REGION
-            amicleaner --full-report --ami-min-days 60 --force-delete
+            amicleaner --full-report --ami-min-days 60 --mapping-key tags --mapping-values Product StackSet --keep-previous 3 --force-delete
           done
