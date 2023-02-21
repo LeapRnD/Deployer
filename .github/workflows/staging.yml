@@ -24,7 +24,7 @@ jobs:
       - name: Compile
         uses: gradle/gradle-build-action@v2
         with:
-          gradle-version: current
+          gradle-version: 7.4.2
           arguments: stage
       - name: Test
         run: find build
